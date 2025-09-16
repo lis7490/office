@@ -32,12 +32,9 @@ line_length = 88
 known_first_party = ["myproject", "myapp", "books", "accounts", "utils"]
 known_django = ["django"]
 skip_glob = ["*/migrations/*", "*/__pycache__/*"]
-known_third_party = ["django", "requests", "pillow"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+known_third_party = ["requests", "pillow"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 default_section = "THIRDPARTY"
 
-[tool.isort.project_directories]
-"./" = "FIRSTPARTY"
-"./myapp" = "FIRSTPARTY"
-"./books" = "FIRSTPARTY"
-"./accounts" = "FIRSTPARTY"
+
+
