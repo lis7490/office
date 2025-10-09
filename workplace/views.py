@@ -12,3 +12,14 @@ def redir(request):
 
 def red(request):
     return HttpResponse('Привет, redirect!')
+
+
+def render_html(request):
+    make_html = """<html>
+    <head><title>Название</title>
+    <body><h1>Привет HTML!</h1></body>
+    </head>"""
+    return HttpResponse(make_html)
+
+def render_template(request):
+    return render(request, 'main.html')
