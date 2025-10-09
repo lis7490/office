@@ -5,3 +5,8 @@ from django.http import HttpResponse
 def home(request):
     return HttpResponse('Главная страница')
 
+def one(request):
+    return HttpResponse('Cтраница №1')
+
+
+
