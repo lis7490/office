@@ -18,10 +18,22 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from django.conf import settings
+from django.conf.urls.static import static
+from django.views.generic import TemplateView
+
 
 urlpatterns = [
     path('', include('employee.urls')), 
     path('admin/', admin.site.urls),
     path('workplace/', include('workplace.urls')),
+    path('home/', TemplateView.as_view(template_name='pages/home.html'), name='home'),
+    path('about/', TemplateView.as_view(template_name='pages/about.html'), name='about'),
+    path('template/', TemplateView.as_view(template_name='pages/main.html'), name='template')
+    
     
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
