@@ -29,7 +29,8 @@ urlpatterns = [
     path('workplace/', include('workplace.urls')),
     path('home/', TemplateView.as_view(template_name='pages/home.html'), name='home'),
     path('about/', TemplateView.as_view(template_name='pages/about.html'), name='about'),
-    path('template/', TemplateView.as_view(template_name='pages/main.html'), name='template')
+    path('template/', TemplateView.as_view(template_name='pages/main.html'), name='template'),
+    
     
     
 ]
