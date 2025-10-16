@@ -1,7 +1,26 @@
-# models.py
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+
+# Получаем модель пользователя
+User = get_user_model()
+
+class Desk(models.Model):
+    number = models.CharField(max_length=10, unique=True)
+    location = models.CharField(max_length=100, blank=True)  # сделаем необязательным
+    coordinates_x = models.IntegerField(default=0)  # добавим значение по умолчанию
+    coordinates_y = models.IntegerField(default=0)  # добавим значение по умолчанию
+    is_available = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"Desk {self.number}"
+
+class Skill(models.Model):
+    name = models.CharField(max_length=100, verbose_name='Название навыка')
+    
+    def __str__(self):
+        return self.name
 
 class Employee(models.Model):
     POSITION_CHOICES = [
@@ -14,7 +33,7 @@ class Employee(models.Model):
     
     first_name = models.CharField(max_length=100, verbose_name='Имя', default="Unknown")
     last_name = models.CharField(max_length=100, verbose_name='Фамилия', default="Employee")
-    position = models.CharField(max_length=20, choices=POSITION_CHOICES, verbose_name='Должность', default='developer')
+    position = models.CharField(max_length=20, choices=POSITION_CHOICES, verbose_name='Должность', default='backend')
     desk_number = models.IntegerField(verbose_name='Номер стола', default=1)
     hire_date = models.DateField(default=timezone.now, verbose_name='Дата приёма на работу')
     gender = models.CharField(max_length=10, choices=[('male', 'Мужской'), ('female', 'Женский')], verbose_name='Пол', default='male')
@@ -64,12 +83,6 @@ class Employee(models.Model):
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
 
-class Skill(models.Model):
-    name = models.CharField(max_length=100, verbose_name='Название навыка')
-    
-    def __str__(self):
-        return self.name
-
 class EmployeeSkill(models.Model):
     LEVEL_CHOICES = [
         (1, 'Начальный'),
@@ -95,3 +108,27 @@ class EmployeeImage(models.Model):
     
     def __str__(self):
         return f'Изображение {self.employee}'
+    
+class Reservation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    desk = models.ForeignKey(Desk, on_delete=models.CASCADE)
+    date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def clean(self):
+        """Вызывается при валидации модели"""
+        # Импортируем валидатор здесь, чтобы избежать циклического импорта
+        from .validators import NeighborDeskValidator
+        validator = NeighborDeskValidator()
+        validator.validate(self)
+    
+    def save(self, *args, **kwargs):
+        """Переопределяем save для вызова полной валидации"""
+        self.full_clean()  # Вызывает clean() и другие валидаторы
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        unique_together = ['desk', 'date']  # Один стол на одну дату
+        
+    def __str__(self):
+        return f"{self.user.username} - {self.desk.number} - {self.date}"

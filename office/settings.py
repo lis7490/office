@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "employee",
     "workplace",
+    
     "django_cleanup.apps.CleanupConfig",
 ]
 
@@ -133,4 +134,16 @@ STATICFILES_DIRS = [
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Настройки для тестирования
+TEST_RUNNER = 'django.test.runner.DiscoverRunner'
+
+# Если используете базу данных для тестов
+import sys
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
 
