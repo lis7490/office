@@ -1,162 +1,97 @@
+# models.py
 from django.db import models
-from workplace.models import Workplace
 from django.core.exceptions import ValidationError
-import os
-
-from django.db.models.signals import post_delete, pre_save
-from django.dispatch import receiver
+from django.utils import timezone
 
 class Employee(models.Model):
-    GENDER_CHOICES = [
-        ("M", "Мужской"),
-        ("F", "Женский")  # Исправлено: "F" вместо "Ж" для consistency
+    POSITION_CHOICES = [
+        ('backend', 'Бекенд-разработчик'),
+        ('frontend', 'Фронтенд-разработчик'), 
+        ('tester', 'Тестировщик'),
+        ('manager', 'Менеджер'),
+        ('designer', 'Дизайнер'),
     ]
     
-    gender = models.CharField(
-        max_length=1,  # Уменьшено т.к. один символ
-        choices=GENDER_CHOICES,
-        verbose_name="Пол"
-    )
-    name = models.CharField(max_length=100, verbose_name="ФИО")
-    skills = models.CharField(
-        max_length=250,
-        verbose_name="Навыки",
-        help_text="Перечислите навыки через запятую",
-    )
-    level_skills = models.CharField(  # Исправлена опечатка: level_sills -> level_skills
-        max_length=250, 
-        verbose_name="Уровень навыков", 
-        help_text="от 1 до 10"
-    )
-    description = models.TextField(  # Изменено на TextField для более длинных описаний
-        max_length=500, 
-        verbose_name="Описание",
-        blank=True  # Сделано необязательным
-    )
-
-    workplace = models.OneToOneField(
-        Workplace,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Рабочее место",
-        related_name="employee",
-    )
-
-    class Meta:
-        verbose_name = "Сотрудник"
-        verbose_name_plural = "Сотрудники"
-        ordering = ['name']  # Добавлена сортировка по умолчанию
-
-    def __str__(self):
-        return self.name
+    first_name = models.CharField(max_length=100, verbose_name='Имя', default="Unknown")
+    last_name = models.CharField(max_length=100, verbose_name='Фамилия', default="Employee")
+    position = models.CharField(max_length=20, choices=POSITION_CHOICES, verbose_name='Должность', default='developer')
+    desk_number = models.IntegerField(verbose_name='Номер стола', default=1)
+    hire_date = models.DateField(default=timezone.now, verbose_name='Дата приёма на работу')
+    gender = models.CharField(max_length=10, choices=[('male', 'Мужской'), ('female', 'Женский')], verbose_name='Пол', default='male')
+    skills = models.ManyToManyField('Skill', through='EmployeeSkill', verbose_name='Навыки')
     
-    @property
-    def main_image(self):
+    def clean(self):
+        super().clean()
+        self.validate_developer_tester_separation()
+    
+    def validate_developer_tester_separation(self):
+        """Валидатор, который не допускает нахождение тестировщиков и разработчиков за соседними столами"""
+        if self.position in ['backend', 'frontend', 'tester']:
+            # Проверяем соседние столы
+            adjacent_desks = [self.desk_number - 1, self.desk_number + 1]
+            
+            # Получаем сотрудников на соседних столах
+            adjacent_employees = Employee.objects.filter(
+                desk_number__in=adjacent_desks
+            ).exclude(pk=self.pk if self.pk else None)
+            
+            for employee in adjacent_employees:
+                if (self.position == 'tester' and employee.position in ['backend', 'frontend']) or \
+                   (self.position in ['backend', 'frontend'] and employee.position == 'tester'):
+                    raise ValidationError(
+                        f'Тестировщики и разработчики не могут работать за соседними столами. '
+                        f'Стол {self.desk_number} соседствует со столом {employee.desk_number}, '
+                        f'где работает {employee.get_position_display()} {employee.first_name} {employee.last_name}'
+                    )
+    
+    def save(self, *args, **kwargs):
+        # Выполняем полную валидацию при сохранении
+        self.full_clean()
+        super().save(*args, **kwargs)
+    
+    def get_work_experience_days(self):
+        """Рассчитывает стаж работы в днях"""
+        return (timezone.now().date() - self.hire_date).days
+    
+    def get_main_photo(self):
         """Возвращает первое изображение из галереи"""
         return self.images.first()
     
-    def get_ordered_images(self):
-        """Возвращает изображения в правильном порядке"""
-        return self.images.all().order_by('order')
-    
-    def images_count(self):
-        """Количество изображений у сотрудника"""
-        return self.images.count()
-    
-    def get_skills_list(self):
-        """Возвращает список навыков"""
-        return [skill.strip() for skill in self.skills.split(',') if skill.strip()]
-
-
-class EmployeeImage(models.Model):
-    employee = models.ForeignKey(
-        Employee,  # Убраны кавычки т.к. класс определен выше
-        on_delete=models.CASCADE,
-        related_name='images',
-        verbose_name='Сотрудник'
-    )
-    image = models.ImageField(
-        upload_to='employees/gallery/%Y/%m/%d/',  # Добавлена структура папок по дате
-        verbose_name='Изображение'
-    )
-    order = models.PositiveIntegerField(
-        default=0,
-        verbose_name='Порядковый номер',
-        help_text='Чем меньше число, тем выше в списке'
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата добавления'
-    )
-    title = models.CharField(  # Добавлено поле для названия/описания изображения
-        max_length=200,
-        verbose_name='Название изображения',
-        blank=True,
-        help_text='Необязательное описание изображения'
-    )
-
-    class Meta:
-        verbose_name = 'Изображение сотрудника'
-        verbose_name_plural = 'Изображения сотрудников'
-        ordering = ['order', 'created_at']
-        unique_together = ['employee', 'order']
+    def get_gallery_photos(self):
+        """Возвращает все изображения кроме первого"""
+        return self.images.all()[1:]
     
     def __str__(self):
-        title = self.title or f"Изображение {self.order}"
-        return f"{title} для {self.employee.name}"
-    
-    def clean(self):
-        """Валидация данных"""
-        if self.order < 0:
-            raise ValidationError({'order': 'Порядковый номер не может быть отрицательным'})
-    
-    def save(self, *args, **kwargs):
-        """Автоматическая установка порядка если не указан"""
-        if self.pk is None and self.order == 0:  # Только для новых объектов
-            max_order = EmployeeImage.objects.filter(
-                employee=self.employee
-            ).aggregate(models.Max('order'))['order__max'] or 0
-            self.order = max_order + 1
-        
-        super().save(*args, **kwargs)
-    
-    def filename(self):
-        """Возвращает имя файла"""
-        return os.path.basename(self.image.name)
-    
-    def get_image_url(self):
-        """Возвращает URL изображения"""
-        if self.image:
-            return self.image.url
-        return None
-    
-@receiver(post_delete, sender=EmployeeImage)
-def reorder_images_after_delete(sender, instance, **kwargs):
-    """Пересчет порядка после удаления изображения"""
-    # Получаем все изображения сотрудника, отсортированные по порядку
-    remaining_images = EmployeeImage.objects.filter(
-        employee=instance.employee
-    ).order_by('order', 'created_at')
-    
-    # Перенумеровываем оставшиеся изображения
-    for index, image in enumerate(remaining_images, 1):
-        if image.order != index:
-            image.order = index
-            image.save()
+        return f'{self.first_name} {self.last_name}'
 
-@receiver(pre_save, sender=EmployeeImage)
-def validate_unique_order(sender, instance, **kwargs):
-    """Проверка уникальности порядка перед сохранением"""
-    if instance.order != 0:  # Если порядок указан явно
-        existing = EmployeeImage.objects.filter(
-            employee=instance.employee,
-            order=instance.order
-        ).exclude(pk=instance.pk)  # Исключаем текущий объект при обновлении
-        
-        if existing.exists():
-            # Находим свободный порядковый номер
-            max_order = EmployeeImage.objects.filter(
-                employee=instance.employee
-            ).aggregate(models.Max('order'))['order__max'] or 0
-            instance.order = max_order + 1
+class Skill(models.Model):
+    name = models.CharField(max_length=100, verbose_name='Название навыка')
+    
+    def __str__(self):
+        return self.name
+
+class EmployeeSkill(models.Model):
+    LEVEL_CHOICES = [
+        (1, 'Начальный'),
+        (2, 'Средний'),
+        (3, 'Продвинутый'),
+        (4, 'Эксперт'),
+    ]
+    
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    skill = models.ForeignKey(Skill, on_delete=models.CASCADE)
+    level = models.IntegerField(choices=LEVEL_CHOICES, verbose_name='Уровень освоения')
+    
+    def __str__(self):
+        return f'{self.employee} - {self.skill} ({self.get_level_display()})'
+
+class EmployeeImage(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='employees/', verbose_name='Изображение')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['uploaded_at']
+    
+    def __str__(self):
+        return f'Изображение {self.employee}'

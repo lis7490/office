@@ -1,13 +1,11 @@
-
+# urls.py
 from django.urls import path
-from .import views
-from .views import EmployeeListView, EmployeeDetailView
+from . import views
 
-app_name = 'employee'
+#app_name = 'employee'
 
 urlpatterns = [
     path('', views.home, name='home'),
-    path('1/', views.one),
-    path('users', EmployeeListView.as_view(), name='employee_list'),
-    path('employee/<int:pk>/', EmployeeDetailView.as_view(), name='employee_detail')
+    path('employees/', views.employee_list, name='employee_list'),
+    path('employees/<int:pk>/', views.employee_detail, name='employee_detail'),
 ]
