@@ -1,141 +1,68 @@
-# employee/admin.py
 from django.contrib import admin
-from .models import Employee, Skill, EmployeeSkill, EmployeeImage
-
-class EmployeeSkillInline(admin.TabularInline):
-    model = EmployeeSkill
-    extra = 1
-    autocomplete_fields = ['skill']
+from django.utils.html import format_html
+from .models import Employee, Skill, Desk, EmployeeSkill, EmployeeImage, Reservation
 
 class EmployeeImageInline(admin.TabularInline):
     model = EmployeeImage
     extra = 1
-    readonly_fields = ['image_preview']
+    readonly_fields = ['preview_image']
     
-    def image_preview(self, obj):
-        if obj.image and obj.image.url:
-            return f'<img src="{obj.image.url}" style="max-height: 100px;" />'
+    def preview_image(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="100" height="100" style="object-fit: cover;" />', obj.image.url)
         return "Нет изображения"
-    
-    image_preview.allow_tags = True
-    image_preview.short_description = 'Предпросмотр'
+    preview_image.short_description = 'Предпросмотр'
+
+class EmployeeSkillInline(admin.TabularInline):
+    model = EmployeeSkill
+    extra = 1
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = [
-        'first_name', 
-        'last_name', 
-        'position', 
-        'desk_number', 
-        'hire_date', 
-        'work_experience_days'
-    ]
+    list_display = ['last_name', 'first_name', 'position', 'desk_number', 'hire_date', 'gender', 'main_photo_preview']
+    list_filter = ['position', 'gender', 'skills']
+    search_fields = ['last_name', 'first_name', 'email']
+    inlines = [EmployeeSkillInline, EmployeeImageInline]
     
-    list_filter = [
-        'position', 
-        'gender', 
-        'hire_date'
-    ]
-    
-    search_fields = [
-        'first_name', 
-        'last_name'
-    ]
-    
-    # Убрали filter_horizontal для skills, так как используем промежуточную модель
-    # Добавляем inline для навыков
-    inlines = [
-        EmployeeSkillInline,
-        EmployeeImageInline
-    ]
-    
-    fieldsets = (
-        ('Основная информация', {
-            'fields': (
-                'first_name', 
-                'last_name', 
-                'gender', 
-                'position'
-            )
-        }),
-        ('Рабочее место', {
-            'fields': (
-                'desk_number', 
-                'hire_date'
-            )
-        }),
-        # Убрали раздел skills из fieldsets, так как используем inline
-    )
-    
-    def work_experience_days(self, obj):
-        return obj.get_work_experience_days()
-    
-    work_experience_days.short_description = 'Стаж (дни)'
+    def main_photo_preview(self, obj):
+        main_photo = obj.get_main_photo()
+        if main_photo and main_photo.image:
+            return format_html('<img src="{}" width="50" height="50" style="object-fit: cover;" />', main_photo.image.url)
+        return "📷"
+    main_photo_preview.short_description = 'Фото'
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
     list_display = ['name']
     search_fields = ['name']
 
+@admin.register(Desk)
+class DeskAdmin(admin.ModelAdmin):
+    list_display = ['number', 'location', 'coordinates_x', 'coordinates_y', 'is_available']
+    list_filter = ['is_available']
+    search_fields = ['number', 'location']
+
 @admin.register(EmployeeSkill)
 class EmployeeSkillAdmin(admin.ModelAdmin):
-    list_display = [
-        'employee', 
-        'skill', 
-        'level_display'
-    ]
-    
-    list_filter = [
-        'level', 
-        'skill'
-    ]
-    
-    search_fields = [
-        'employee__first_name', 
-        'employee__last_name', 
-        'skill__name'
-    ]
-    
-    autocomplete_fields = ['employee', 'skill']
-    
-    def level_display(self, obj):
-        return obj.get_level_display()
-    
-    level_display.short_description = 'Уровень'
+    list_display = ['employee', 'skill', 'level']
+    list_filter = ['level', 'skill']
+    search_fields = ['employee__first_name', 'employee__last_name', 'skill__name']
 
 @admin.register(EmployeeImage)
 class EmployeeImageAdmin(admin.ModelAdmin):
-    list_display = [
-        'employee', 
-        'image_preview_list',
-        'uploaded_at'
-    ]
+    list_display = ['employee', 'preview_image', 'uploaded_at']
+    list_filter = ['uploaded_at']
+    search_fields = ['employee__first_name', 'employee__last_name']
+    readonly_fields = ['preview_image']
     
-    list_filter = [
-        'uploaded_at'
-    ]
-    
-    search_fields = [
-        'employee__first_name', 
-        'employee__last_name'
-    ]
-    
-    ordering = ['employee', 'uploaded_at']
-    
-    readonly_fields = ['image_preview']
-    
-    def image_preview_list(self, obj):
-        if obj.image and obj.image.url:
-            return f'<img src="{obj.image.url}" style="max-height: 50px;" />'
+    def preview_image(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="200" height="200" style="object-fit: cover;" />', obj.image.url)
         return "Нет изображения"
-    
-    image_preview_list.allow_tags = True
-    image_preview_list.short_description = 'Предпросмотр'
-    
-    def image_preview(self, obj):
-        if obj.image and obj.image.url:
-            return f'<img src="{obj.image.url}" style="max-height: 200px;" />'
-        return "Нет изображения"
-    
-    image_preview.allow_tags = True
-    image_preview.short_description = 'Предпросмотр'
+    preview_image.short_description = 'Предпросмотр'
+
+@admin.register(Reservation)
+class ReservationAdmin(admin.ModelAdmin):
+    list_display = ['user', 'desk', 'date', 'created_at']
+    list_filter = ['date', 'desk']
+    search_fields = ['user__username', 'desk__number']

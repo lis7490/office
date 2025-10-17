@@ -10,11 +10,10 @@ def home(request):
         'total_employees': total_employees,
         'latest_employees': latest_employees,
     }
-    # Временно рендерим без наследования
     return render(request, 'employees/home.html', context)
 
 def employee_list(request):
-    employees_list = Employee.objects.all().order_by('-hire_date')
+    employees_list = Employee.objects.all().prefetch_related('images', 'skills').order_by('-hire_date')
     
     paginator = Paginator(employees_list, 10)
     page_number = request.GET.get('page')

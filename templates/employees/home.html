@@ -51,9 +51,8 @@
             <h2>Общее количество сотрудников: {{ total_employees }}</h2>
         </div>
 
-        <a class="btn btn-light btn-lg me-3" href="/employees/" role="button">Посмотреть всех сотрудников</a>
-
         <!-- 4 последних сотрудника -->
+        
         <h2>Последние принятые сотрудники</h2>
         <div class="row">
             {% for employee in latest_employees %}
@@ -73,8 +72,10 @@
                             <strong>Стаж:</strong> {{ employee.get_work_experience_days }} дней
                         </p>
                         <a href="/employees/{{ employee.pk }}/" class="btn btn-primary">Подробнее</a>
+                        
                     </div>
                 </div>
+                
             </div>
             {% empty %}
             <div class="col-12">
@@ -83,8 +84,7 @@
             {% endfor %}
         </div>
     </div>
-    <a class="btn btn-light btn-lg me-3" href="/employees/" role="button">Посмотреть всех сотрудников</a>
-
+   
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

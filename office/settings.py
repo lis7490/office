@@ -40,7 +40,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "employee",
     "workplace",
-    
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'django_filters',
     "django_cleanup.apps.CleanupConfig",
 ]
 
@@ -59,7 +61,7 @@ ROOT_URLCONF = "office.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, 'templates')],
+         'DIRS': [BASE_DIR / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -134,10 +136,10 @@ STATICFILES_DIRS = [
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Настройки для тестирования
+
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
-# Если используете базу данных для тестов
+
 import sys
 if 'test' in sys.argv:
     DATABASES = {
@@ -147,3 +149,25 @@ if 'test' in sys.argv:
         }
     }
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+}
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+# Настройки для загрузки файлов
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
